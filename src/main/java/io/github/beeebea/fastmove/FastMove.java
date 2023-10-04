@@ -77,7 +77,7 @@ public class FastMove implements ModInitializer {
                 } else if (moveState.equals(MoveState.WALLRUNNING_LEFT) || moveState.equals(MoveState.WALLRUNNING_RIGHT)) {
                     playerstate.stamina -= getConfig().rstaminaWallrunning;
                 }
-                if(playerstate.stamina > 0) SendToClients((PlayerEntity) fastPlayer, MOVE_STATE, uuid, moveStateInt);
+                if(playerstate.stamina > playerstate.maxStamina/10 * 4) SendToClients((PlayerEntity) fastPlayer, MOVE_STATE, uuid, moveStateInt);
             }else {
                 SendToClients((PlayerEntity) fastPlayer, MOVE_STATE, uuid, moveStateInt);
             }
