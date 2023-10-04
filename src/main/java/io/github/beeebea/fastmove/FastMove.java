@@ -7,11 +7,14 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import realisticstamina.rstamina.RStaminaPlayerState;
+import realisticstamina.rstamina.ServerState;
 
 import java.util.LinkedList;
 import java.util.Queue;
@@ -32,10 +35,12 @@ public class FastMove implements ModInitializer {
     public static IMoveStateUpdater moveStateUpdater;
     public static IFastMoveInput INPUT;
     public static IFastMoveConfig CONFIG;
+    public boolean RStamina_ACTIVE = false;
 
     @Override
     public void onInitialize() {
         LOGGER.info("initializing FastMove :3");
+        RStamina_ACTIVE = FabricLoader.getInstance().isModLoaded("rstamina");
 
         moveStateUpdater = new IMoveStateUpdater(){
             @Override
@@ -63,8 +68,19 @@ public class FastMove implements ModInitializer {
             MoveState moveState = MoveState.STATE(moveStateInt);
             IFastPlayer fastPlayer = (IFastPlayer) server.getPlayerManager().getPlayer(uuid);
             if( fastPlayer != null) fastPlayer.fastmove_setMoveState(moveState);
-
-            SendToClients((PlayerEntity) fastPlayer, MOVE_STATE, uuid, moveStateInt);
+            if (RStamina_ACTIVE){
+                RStaminaPlayerState playerstate = ServerState.getPlayerState(player);
+                if (moveState.equals(MoveState.ROLLING)){
+                    playerstate.stamina -= getConfig().rstaminaRolling;
+                } else if (moveState.equals(MoveState.SLIDING)) {
+                    playerstate.stamina -= getConfig().rstaminaSliding;
+                } else if (moveState.equals(MoveState.WALLRUNNING_LEFT) || moveState.equals(MoveState.WALLRUNNING_RIGHT)) {
+                    playerstate.stamina -= getConfig().rstaminaWallrunning;
+                }
+                if(playerstate.stamina > 0) SendToClients((PlayerEntity) fastPlayer, MOVE_STATE, uuid, moveStateInt);
+            }else {
+                SendToClients((PlayerEntity) fastPlayer, MOVE_STATE, uuid, moveStateInt);
+            }
 
         });
 

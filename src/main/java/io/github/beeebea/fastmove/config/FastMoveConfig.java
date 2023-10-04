@@ -26,7 +26,9 @@ public class FastMoveConfig implements Serializable {
         slideStaminaCost = 10;
         slideSpeedBoostMultiplier = 1;
         slideCoolDown = 0;
-
+        rstaminaRolling = 4;
+        rstaminaSliding = 4;
+        rstaminaWallrunning = 4;
     }
     
     public boolean enableFastMove;
@@ -48,6 +50,10 @@ public class FastMoveConfig implements Serializable {
     public double slideSpeedBoostMultiplier;
     public int slideCoolDown;
 
+    public int rstaminaRolling;
+    public int rstaminaSliding;
+    public int rstaminaWallrunning;
+
     public FastMoveConfig(FastMoveConfig config) {
         enableFastMove = config.enableFastMove;
         diveRollEnabled = config.diveRollEnabled;
@@ -64,5 +70,8 @@ public class FastMoveConfig implements Serializable {
         slideStaminaCost = config.slideStaminaCost;
         slideSpeedBoostMultiplier = config.slideSpeedBoostMultiplier;
         slideCoolDown = config.slideCoolDown;
+        rstaminaRolling = config.rstaminaRolling;
+        rstaminaSliding = config.rstaminaSliding;
+        rstaminaWallrunning = config.rstaminaWallrunning;
     }
 }
