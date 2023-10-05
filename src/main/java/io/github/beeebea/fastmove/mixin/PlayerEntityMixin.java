@@ -24,6 +24,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import realisticstamina.rstamina.RStaminaClient;
 
 @Mixin(PlayerEntity.class)
 public abstract class PlayerEntityMixin extends LivingEntity implements IFastPlayer  {
@@ -119,32 +120,34 @@ public abstract class PlayerEntityMixin extends LivingEntity implements IFastPla
                 wallRunCounter = 0;
                 moveState = MoveState.NONE;
             } else {
-                wallRunCounter++;
-                setSprinting(true);
+             if (enoughStamina()){
+                 wallRunCounter++;
+                 setSprinting(true);
 
-                var wallBlockPos = getBlockPos().subtract(BlockPos.ofFloored(lastWallDir));
-                if(lastBlockPos == null || !lastBlockPos.equals(wallBlockPos)) {
-                    lastBlockPos = wallBlockPos;
-                    playStepSound(wallBlockPos, getWorld().getBlockState(wallBlockPos));
-                }
+                 var wallBlockPos = getBlockPos().subtract(BlockPos.ofFloored(lastWallDir));
+                 if(lastBlockPos == null || !lastBlockPos.equals(wallBlockPos)) {
+                     lastBlockPos = wallBlockPos;
+                     playStepSound(wallBlockPos, getWorld().getBlockState(wallBlockPos));
+                 }
 
-                var flatVel = vel.multiply(1, 0, 1);
-                var wallVel = isWallLeft ? flatVel.normalize().rotateY(90) : flatVel.normalize().rotateY(-90);
-                moveState = !isWallLeft ? MoveState.WALLRUNNING_LEFT : MoveState.WALLRUNNING_RIGHT;
-                if (fastmove_velocityToMovementInput(flatVel, getYaw()).dotProduct(lastWallDir) < 0) {
-                    addVelocity(wallVel.multiply(-0.1, 0, -0.1));
-                }
-                addVelocity(new Vec3d(0, -vel.y * (1 - ((double) wallRunCounter / FastMove.getConfig().getWallRunDurationTicks())), 0));
-                bonusVelocity = Vec3d.ZERO;
-                if (!FastMove.INPUT.ismoveUpKeyPressed()) {
-                    double velocityMult = FastMove.getConfig().getWallRunSpeedBoostMultiplier();
-                    addVelocity(wallVel.multiply(0.3 * velocityMult, 0, 0.3 * velocityMult).add(new Vec3d(0, 0.4 * velocityMult, 0)));
-                    moveState = MoveState.NONE;
-                }
+                 var flatVel = vel.multiply(1, 0, 1);
+                 var wallVel = isWallLeft ? flatVel.normalize().rotateY(90) : flatVel.normalize().rotateY(-90);
+                 moveState = !isWallLeft ? MoveState.WALLRUNNING_LEFT : MoveState.WALLRUNNING_RIGHT;
+                 if (fastmove_velocityToMovementInput(flatVel, getYaw()).dotProduct(lastWallDir) < 0) {
+                     addVelocity(wallVel.multiply(-0.1, 0, -0.1));
+                 }
+                 addVelocity(new Vec3d(0, -vel.y * (1 - ((double) wallRunCounter / FastMove.getConfig().getWallRunDurationTicks())), 0));
+                 bonusVelocity = Vec3d.ZERO;
+                 if (!FastMove.INPUT.ismoveUpKeyPressed()) {
+                     double velocityMult = FastMove.getConfig().getWallRunSpeedBoostMultiplier();
+                     addVelocity(wallVel.multiply(0.3 * velocityMult, 0, 0.3 * velocityMult).add(new Vec3d(0, 0.4 * velocityMult, 0)));
+                     moveState = MoveState.NONE;
+                 }
+             }
             }
         } else {
             wallRunCounter = 0;
-            if (!isOnGround() && FastMove.INPUT.ismoveUpKeyPressed() && hasWall && vel.y <= 0) {
+            if (enoughStamina() && !isOnGround() && FastMove.INPUT.ismoveUpKeyPressed() && hasWall && vel.y <= 0) {
                 moveState = MoveState.WALLRUNNING_LEFT;
                 hungerManager.addExhaustion(FastMove.getConfig().getWallRunStaminaCost());
             }
@@ -203,7 +206,6 @@ public abstract class PlayerEntityMixin extends LivingEntity implements IFastPla
     @Inject(method = "tick" , at = @At("HEAD"))
     private void fastmove_tick(CallbackInfo info) {
         if(!FastMove.getConfig().enableFastMove) return;
-
         if(this.isMainPlayer()) {
             if (abilities.flying || getControllingVehicle() != null) {
                 moveState = MoveState.NONE;
@@ -249,7 +251,7 @@ public abstract class PlayerEntityMixin extends LivingEntity implements IFastPla
         if(FastMove.INPUT.ismoveDownKeyPressed()){
             if(!FastMove.INPUT.ismoveDownKeyPressedLastTick()) {
                 var conf = FastMove.getConfig();
-                if (diveCooldown == 0 && conf.diveRollEnabled && !isOnGround()
+                if (enoughStamina() && diveCooldown == 0 && conf.diveRollEnabled && !isOnGround()
                                         && getVelocity().multiply(1, 0, 1).lengthSquared() > 0.05
                                         && fastmove_isValidForMovement(conf.diveRollWhenSwimming, conf.diveRollWhenFlying)) {
                     diveCooldown = conf.getDiveRollCoolDown();
@@ -257,7 +259,7 @@ public abstract class PlayerEntityMixin extends LivingEntity implements IFastPla
                     moveState = MoveState.ROLLING;
                     bonusVelocity = fastmove_movementInputToVelocity(new Vec3d(0, 0, 1), 0.1f * conf.getDiveRollSpeedBoostMultiplier(), getYaw());
                     setSprinting(true);
-                } else if (slideCooldown == 0 && conf.slideEnabled && fastmove_lastSprintingState
+                } else if (enoughStamina() && slideCooldown == 0 && conf.slideEnabled && fastmove_lastSprintingState
                                         && fastmove_isValidForMovement(false, false) ) {
                     slideCooldown = conf.getSlideCoolDown();
                     hungerManager.addExhaustion(conf.getSlideStaminaCost());
@@ -301,6 +303,13 @@ public abstract class PlayerEntityMixin extends LivingEntity implements IFastPla
         if(source.getType().deathMessageType() == DeathMessageType.FALL_VARIANTS && moveState == MoveState.ROLLING){
             cir.setReturnValue(false);
             cir.cancel();
+        }
+    }
+    private boolean enoughStamina(){
+        if (FastMove.RStamina_ACTIVE) {
+            return (RStaminaClient.clientStoredStamina>(RStaminaClient.clientStoredMaxStamina/10)*4);
+        }else{
+            return true;
         }
     }
 }

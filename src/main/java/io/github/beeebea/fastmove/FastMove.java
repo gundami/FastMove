@@ -35,7 +35,7 @@ public class FastMove implements ModInitializer {
     public static IMoveStateUpdater moveStateUpdater;
     public static IFastMoveInput INPUT;
     public static IFastMoveConfig CONFIG;
-    public boolean RStamina_ACTIVE = false;
+    public static boolean RStamina_ACTIVE = false;
 
     @Override
     public void onInitialize() {
@@ -67,7 +67,6 @@ public class FastMove implements ModInitializer {
             var moveStateInt = buf.readInt();
             MoveState moveState = MoveState.STATE(moveStateInt);
             IFastPlayer fastPlayer = (IFastPlayer) server.getPlayerManager().getPlayer(uuid);
-            if( fastPlayer != null) fastPlayer.fastmove_setMoveState(moveState);
             if (RStamina_ACTIVE){
                 RStaminaPlayerState playerstate = ServerState.getPlayerState(player);
                 if (moveState.equals(MoveState.ROLLING)){
@@ -77,8 +76,12 @@ public class FastMove implements ModInitializer {
                 } else if (moveState.equals(MoveState.WALLRUNNING_LEFT) || moveState.equals(MoveState.WALLRUNNING_RIGHT)) {
                     playerstate.stamina -= getConfig().rstaminaWallrunning;
                 }
-                if(playerstate.stamina > playerstate.maxStamina/10 * 4) SendToClients((PlayerEntity) fastPlayer, MOVE_STATE, uuid, moveStateInt);
+                if(playerstate.stamina > playerstate.maxStamina/10 * 4) {
+                    if( fastPlayer != null) fastPlayer.fastmove_setMoveState(moveState);
+                    SendToClients((PlayerEntity) fastPlayer, MOVE_STATE, uuid, moveStateInt);
+                }
             }else {
+                if( fastPlayer != null) fastPlayer.fastmove_setMoveState(moveState);
                 SendToClients((PlayerEntity) fastPlayer, MOVE_STATE, uuid, moveStateInt);
             }
 
@@ -109,6 +112,9 @@ public class FastMove implements ModInitializer {
             buf.writeInt(getConfig().slideStaminaCost);
             buf.writeDouble(getConfig().slideSpeedBoostMultiplier);
             buf.writeInt(getConfig().slideCoolDown);
+            buf.writeInt(getConfig().rstaminaRolling);
+            buf.writeInt(getConfig().rstaminaSliding);
+            buf.writeInt(getConfig().rstaminaWallrunning);
             sender.sendPacket(CONFIG_STATE, buf);
         });
 

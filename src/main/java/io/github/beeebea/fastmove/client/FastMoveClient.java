@@ -107,6 +107,9 @@ public class FastMoveClient extends FastMove implements ClientModInitializer {
             serverConfig.slideStaminaCost = buf.readInt();
             serverConfig.slideSpeedBoostMultiplier = buf.readDouble();
             serverConfig.slideCoolDown = buf.readInt();
+            serverConfig.rstaminaRolling = buf.readInt();
+            serverConfig.rstaminaSliding = buf.readInt();
+            serverConfig.rstaminaWallrunning = buf.readInt();
             LOGGER.info("Got config from server");
         });
 
